@@ -1,2 +1,10 @@
 .vscode
 thoughts.txt
+
+performance/perf*
+performance/*.perf
+performance/*.folded
+
+a
+
+gen.cpp

@@ -57,20 +57,27 @@ public:
         }
 
         // balance the amount of the shared resource
-        std::unordered_map<int32_t, int32_t> sum;   // root -> sum of volumes
-        std::unordered_map<int32_t, int32_t> count; // root -> number of nodes
+        int32_t n = nodes_.size();
 
-        // 1. calculate the amounts and sizes of the components
-        for (int32_t i = 0; i < nodes_.size(); ++i) {
-            int32_t root = find_set(i);
+        std::vector<int64_t> sum(n, 0);
+        std::vector<int32_t> count(n, 0);
+
+        // 1. compressing paths
+        for (int32_t i = 0; i < n; ++i) {
+            nodes_[i].parent_ = find_set(i);
+        }
+
+        // 2. count the amounts and sizes
+        for (int32_t i = 0; i < n; ++i) {
+            int32_t root = nodes_[i].parent_;
             sum[root] += nodes_[i].volume_;
             count[root] += 1;
         }
 
-        // 2. write the average value to each vertex
-        for (int32_t i = 0; i < nodes_.size(); ++i) {
-            int32_t root = find_set(i);
-            nodes_[i].volume_ = sum[root] / count[root]; // integer division
+        // 3. write the average
+        for (int32_t i = 0; i < n; ++i) {
+            int32_t root = nodes_[i].parent_;
+            nodes_[i].volume_ = sum[root] / count[root];
         }
     }
 
