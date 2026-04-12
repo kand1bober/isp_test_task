@@ -6,130 +6,96 @@
 #include <cstdint>
 #include <vector>
 
-enum node_state_t : uint8_t {
-    kLeader = 0,
-    kFollower = 1,
-    kSolo = 2,
+struct node_t {
+    std::vector<int> connected_;
+    int32_t parent_ = 0; // part from DSU algorythm
+    int32_t volume_ = 0;
+
+    node_t(int32_t parent) : parent_(parent) {}
 };
 
-class node_t {
-private: 
-    int volume_ = 0;
-    node_state_t state_ = kSolo;
 
-    std::vector<node_t*> connected_;
+class dsu {
+private:
+    std::vector<node_t> nodes_;
 
-    node_t* leader_ = nullptr;
-
-public:
-    node_t() = default;
-
-    inline void show_volume() {
-        std::cout << "volume: " << volume_ << std::endl;
+    //-------- tree functions --------
+    int32_t find_set(int32_t n) {
+        while (n != nodes_[n].parent_) {
+            n = nodes_[n].parent_ = nodes_[nodes_[n].parent_].parent_; // path compression
+            // n = nodes_[n].parent_;
+        }
+        return n;
     }
 
-    inline void connect(node_t& node) {
-        connected_.push_back(&node);
-        node.connected_.push_back(this);
+    void union_set(int32_t a, int32_t b) {
+        a = find_set(a);
+        b = find_set(b);
 
-        if (state_ == kSolo && node.state_ == kSolo) {
-            state_ = kLeader;
-            volume_ += node.volume_;
-            leader_ = this;
-
-            node.state_ = kFollower;
-            node.leader_ = this;
-
-            //TODO: пересчет обьема у мн-ва
+        if (a != b) {
+            nodes_[b].parent_ = a; // можно добавить union by rank при желании
         }
-        
-        else if (state_ == kSolo && node.state_ == kLeader) {
-            state_ = kFollower;
-            leader_ = &node;
+    }
 
-            node.volume_ += volume_;
-            
-            //TODO: пересчет обьема у мн-ва
-        }
-        else if (state_ == kLeader && node.state_ == kSolo) {
-            volume_ += node.volume_;
+public:
+    //-------- tree functions --------
+    void make_set() {
+        nodes_.push_back(node_t(nodes_.size()));
+    }
 
-            node.state_ = kFollower;
-            node.leader_ = this;
-
-            //TODO: пересчет обьема у мн-ва
+    void make_minimum_spanning_tree() {
+        // init DSU
+        for (int32_t i = 0; i < nodes_.size(); ++i) {
+            nodes_[i].parent_ = i;
         }
 
-        else if (state_ == kSolo && node.state_ == kFollower) {
-            state_ = kFollower;
-            leader_ = node.leader_;
-            
-            leader_->volume_ += volume_;
-
-            //TODO: пересчет обьема у мн-ва
-        }
-        else if (state_ == kFollower && node.state_ == kSolo) {
-            leader_->volume_ += node.volume_;
-
-            node.state_ = kFollower;
-            node.leader_ = leader_;
-
-            //TODO: пересчет обьема у мн-ва
-        }
-
-        else if (state_ == kFollower && node.state_ == kLeader) {
-            // consider which leader has more followers, 
-            // change the the smaller set of nodes 
-            if (leader_->connected_.size() > node.connected_.size()) {
-                node.leader_ = leader_;
-                node.state_ = kFollower;
-                for (auto tmp_node : node.connected_) {
-                    tmp_node->leader_ = leader_; 
-                }
+        // make MST        
+        for (int32_t u = 0; u < nodes_.size(); ++u) {
+            for (int32_t v : nodes_[u].connected_) {
+                union_set(u, v);
             }
-            else {
-                leader_->leader_ = &node;
-                leader_->state_ = kFollower;
-                for (auto tmp_node : leader_->connected_) {
-                    tmp_node->leader_ = &node;
-                }
-            }
-
-            //TODO: пересчет обьема у мн-ва
         }
-        else if (state_ == kLeader && node.state_ == kFollower) {
-            // consider which leader has more followers, 
-            // change the the smaller set of nodes 
-            if (connected_.size() > node.leader_->connected_.size()) {
-                node.leader_->leader_ = this;
-                node.leader_->state_ = kFollower;
-                for (auto tmp_node : node.leader_->connected_) {
-                    tmp_node->leader_ = this;
-                }
-            }
-            else {
-                leader_ = node.leader_;
-                state_ = kFollower;
-                for (auto tmp_node : connected_) {
-                    tmp_node->leader_ = node.leader_;
-                }
-            }
 
-            //TODO: пересчет обьема у мн-ва
-        }
-        
-        else if (state_ == kLeader && node.state_ == kLeader) {
-            // consider which leader has more followers, 
-            // change the the smaller set of nodes 
-            if (connected_.size() > node.connected_.size()) {
-                node.state_ = kFollower;
-                node.leader_ = this;
-                for (auto tmp_node : node.connected_) {
-                    tmp_node->leader_ = this;
-                }
-            }
+        // balance the amount of the shared resource
+        std::unordered_map<int32_t, int32_t> sum;   // root -> sum of volumes
+        std::unordered_map<int32_t, int32_t> count; // root -> number of nodes
 
-            //TODO: пересчет обьема у мн-ва
+        // 1. calculate the amounts and sizes of the components
+        for (int32_t i = 0; i < nodes_.size(); ++i) {
+            int32_t root = find_set(i);
+            sum[root] += nodes_[i].volume_;
+            count[root] += 1;
         }
+
+        // 2. write the average value to each vertex
+        for (int32_t i = 0; i < nodes_.size(); ++i) {
+            int32_t root = find_set(i);
+            nodes_[i].volume_ = sum[root] / count[root]; // integer division
+        }
+    }
+
+    //-------- edges functions --------
+    void add_connection(int32_t a, int32_t b) {
+        nodes_[a].connected_.push_back(b);
+        nodes_[b].connected_.push_back(a);        
+    }
+
+    void remove_connection(int32_t a, int32_t b) {
+        nodes_[a].connected_.erase(nodes_[a].connected_.begin() + b);
+        nodes_[b].connected_.erase(nodes_[b].connected_.begin() + a);
+    }
+
+    //-------- resource handling --------
+    void add_resource(int32_t node_num, int32_t volume) {
+        if (volume >= 0)
+            nodes_[node_num].volume_ += volume;
+        //TODO: 
+    }
+
+    int32_t check_resource(int32_t node_num) {
+        if (node_num >= 0 && node_num < nodes_.size()) {
+            return nodes_[node_num].volume_; 
+        }
+        return -1;
     }
 };
