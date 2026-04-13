@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <cstdint>
 #include <vector>
+#include <algorithm>
 
 struct node_t {
     std::vector<int> connected_;
@@ -12,6 +13,16 @@ struct node_t {
     int32_t volume_ = 0;
 
     node_t(int32_t parent) : parent_(parent) {}
+
+    void remove_connection(int32_t id) {
+        auto iter = std::find(connected_.begin(), connected_.end(), id);
+
+        // change curr element with last and delete last
+        if (iter != connected_.end()) {
+            *iter = connected_.back();
+            connected_.pop_back();
+        }
+    }
 };
 
 
@@ -98,9 +109,9 @@ public:
         nodes_[b].connected_.push_back(a);        
     }
 
-    void remove_connection(int32_t a, int32_t b) {
-        nodes_[a].connected_.erase(nodes_[a].connected_.begin() + b);
-        nodes_[b].connected_.erase(nodes_[b].connected_.begin() + a);
+    void remove_edge(int32_t a, int32_t b) {
+        nodes_[a].remove_connection(b);
+        nodes_[b].remove_connection(a);
     }
 
     //-------- resource handling --------

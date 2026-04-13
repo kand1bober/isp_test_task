@@ -87,7 +87,7 @@ int main() {
     // ---------- 7. remove M edges ----------
     for (size_t i = 0; i < M && i < edges.size(); ++i) {
         auto [a, b] = edges[i];
-        graph.remove_connection(a, b);
+        graph.remove_edge(a, b);
     }
 
     auto t7 = high_resolution_clock::now();
