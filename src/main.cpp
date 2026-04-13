@@ -20,14 +20,14 @@ int main() {
     const int32_t L = 31'000'000;
     const int32_t M = 4'000'000;
 
-    dsu graph;
+    node_dispatcher graph;
 
     // ---------- 1. create nodes ----------
     auto t0 = high_resolution_clock::now();
 
-    graph = dsu();
+    graph = node_dispatcher();
     for (int32_t i = 0; i < N; ++i) {
-        graph.make_set();
+        graph.add_node();
     }
 
     auto t1 = high_resolution_clock::now();
@@ -62,7 +62,7 @@ int main() {
     cout << "Add connections: " << duration_cast<seconds>(t3 - t2).count() << " sec\n";
 
     // ---------- 4. measure ----------
-    graph.make_minimum_spanning_tree();
+    graph.calculate_resources();
     // <---here measuring of volumes of nodes can be placed 
 
     auto t4 = high_resolution_clock::now();
@@ -78,14 +78,14 @@ int main() {
     cout << "Add water: " << duration_cast<seconds>(t5 - t4).count() << " sec\n";
 
     // ---------- 6. measure ----------
-    graph.make_minimum_spanning_tree();
+    graph.calculate_resources();
     // <---here measuring of volumes of nodes can be placed 
 
     auto t6 = high_resolution_clock::now();
     cout << "Second balancing: " << duration_cast<seconds>(t6 - t5).count() << " sec\n";
 
     // ---------- 7. remove M edges ----------
-    for (int32_t i = 0; i < M && i < edges.size(); ++i) {
+    for (size_t i = 0; i < M && i < edges.size(); ++i) {
         auto [a, b] = edges[i];
         graph.remove_connection(a, b);
     }
@@ -103,7 +103,7 @@ int main() {
     cout << "Add water again: " << duration_cast<seconds>(t8 - t7).count() << " sec\n";
 
     // ---------- 9. measure ----------
-    graph.make_minimum_spanning_tree();
+    graph.calculate_resources();
     // <---here measuring of volumes of nodes can be placed 
 
     auto t9 = high_resolution_clock::now();

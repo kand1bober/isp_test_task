@@ -7,6 +7,4 @@ performance/*.folded
 
 a
 
-gen.cpp
-
 heaptrack*

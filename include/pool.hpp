@@ -15,15 +15,18 @@ struct node_t {
 };
 
 
-class dsu {
+class node_dispatcher {
 private:
     std::vector<node_t> nodes_;
 
     //-------- tree functions --------
+    void make_set() {
+        nodes_.push_back(node_t(nodes_.size()));
+    }
+    
     int32_t find_set(int32_t n) {
         while (n != nodes_[n].parent_) {
             n = nodes_[n].parent_ = nodes_[nodes_[n].parent_].parent_; // path compression
-            // n = nodes_[n].parent_;
         }
         return n;
     }
@@ -33,52 +36,60 @@ private:
         b = find_set(b);
 
         if (a != b) {
-            nodes_[b].parent_ = a; // можно добавить union by rank при желании
+            nodes_[b].parent_ = a;
         }
     }
 
-public:
-    //-------- tree functions --------
-    void make_set() {
-        nodes_.push_back(node_t(nodes_.size()));
-    }
-
-    void make_minimum_spanning_tree() {
-        // init DSU
-        for (int32_t i = 0; i < nodes_.size(); ++i) {
+    // make minimum spanning tree out of graph
+    void make_mst() {
+        // set every node as a parent to themselves
+        for (size_t i = 0; i < nodes_.size(); ++i) {
             nodes_[i].parent_ = i;
         }
 
-        // make MST        
-        for (int32_t u = 0; u < nodes_.size(); ++u) {
+        // pairwise union for all nodes
+        for (size_t u = 0; u < nodes_.size(); ++u) {
             for (int32_t v : nodes_[u].connected_) {
                 union_set(u, v);
             }
         }
+    }
 
-        // balance the amount of the shared resource
-        int32_t n = nodes_.size();
-
-        std::vector<int64_t> sum(n, 0);
-        std::vector<int32_t> count(n, 0);
-
-        // 1. compressing paths
-        for (int32_t i = 0; i < n; ++i) {
+    // set a representative of MST as a parent for every node in this MST
+    void compress_paths() {
+        for (size_t i = 0; i < nodes_.size(); ++i) {
             nodes_[i].parent_ = find_set(i);
         }
+    }
 
-        // 2. count the amounts and sizes
-        for (int32_t i = 0; i < n; ++i) {
-            int32_t root = nodes_[i].parent_;
-            sum[root] += nodes_[i].volume_;
-            count[root] += 1;
+    // balance the amount of the shared resource in MST
+    void balance_mst_shared_resource() {
+        std::vector<int64_t> total_volume(nodes_.size(), 0);
+        std::vector<int32_t> mst_nodes_count(nodes_.size(), 0);
+
+        for (size_t i = 0; i < nodes_.size(); ++i) {
+            int32_t root = nodes_[i].parent_; // find representative of mst this node is in
+            total_volume[root] += nodes_[i].volume_; // add volume of this node to total volume of this mst
+            mst_nodes_count[root] += 1;
         }
 
-        // 3. write the average
-        for (int32_t i = 0; i < n; ++i) {
+        // calculate and write to each node of mst the average volume of resource
+        for (size_t i = 0; i < nodes_.size(); ++i) {
             int32_t root = nodes_[i].parent_;
-            nodes_[i].volume_ = sum[root] / count[root];
+            nodes_[i].volume_ = total_volume[root] / mst_nodes_count[root];
         }
+    }
+
+public:
+    void add_node() {
+        make_set();
+    }
+
+    //-------- tree functions --------
+    void calculate_resources() {
+        make_mst();
+        compress_paths();
+        balance_mst_shared_resource();
     }
 
     //-------- edges functions --------
@@ -93,14 +104,17 @@ public:
     }
 
     //-------- resource handling --------
-    void add_resource(int32_t node_num, int32_t volume) {
-        if (volume >= 0)
+    int32_t add_resource(int32_t node_num, int32_t volume) {
+        if (volume >= 0) {
             nodes_[node_num].volume_ += volume;
-        //TODO: 
+            return 0;
+        }
+        else 
+            return -1;
     }
 
-    int32_t check_resource(int32_t node_num) {
-        if (node_num >= 0 && node_num < nodes_.size()) {
+    int32_t show_amount_of_resource(int32_t node_num) {
+        if (node_num >= 0 && (size_t)node_num < nodes_.size()) {
             return nodes_[node_num].volume_; 
         }
         return -1;
