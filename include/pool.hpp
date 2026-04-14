@@ -7,27 +7,27 @@
 #include <vector>
 #include <algorithm>
 
-struct node_t {
-    std::vector<int> connected_;
-    int32_t parent_ = 0; // part from DSU algorythm
-    int32_t volume_ = 0;
-
-    node_t(int32_t parent) : parent_(parent) {}
-
-    void remove_connection(int32_t id) {
-        auto iter = std::find(connected_.begin(), connected_.end(), id);
-
-        // change curr element with last and delete last
-        if (iter != connected_.end()) {
-            *iter = connected_.back();
-            connected_.pop_back();
-        }
-    }
-};
-
 
 class node_dispatcher {
 private:
+    struct node_t {
+        std::vector<int> connected_;
+        int32_t parent_ = 0; // part from DSU algorythm
+        int32_t volume_ = 0;
+
+        node_t(int32_t parent) : parent_(parent) {}
+
+        void remove_connection(int32_t id) {
+            auto iter = std::find(connected_.begin(), connected_.end(), id);
+
+            // change curr element with last and delete last
+            if (iter != connected_.end()) {
+                *iter = connected_.back();
+                connected_.pop_back();
+            }
+        }
+    };
+    
     std::vector<node_t> nodes_;
 
     //-------- tree functions --------

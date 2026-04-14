@@ -1,9 +1,9 @@
 ### build
-    g++ src/main.cpp -o <name>
-
-### сделать флеймграф
-    chmod +x run_test.sh
-    ./run_test_sh <name>
+    g++ src/main.cpp -o <prog_name>
+### run unit-tests
+    ./<prog_name> -test
+### run bench
+    ./<prog_name> -bench
 
 ## Идея
 1) каждая нода хранит вектор из номеров нод, с которыми она связана
@@ -12,92 +12,41 @@
 
 3) т.к. сценарий подразумевает большое количество добавлений/удалений связей между нодами можно обновлять количество разделяемого ресурса только в моменты, когда характер изменений меняется(удаляли связи --> начали добавлять связи или наоборот) и в моменты, когда нужно отобразить состояние нод. 
 
-4) обновление состояния разделяемого между нодами ресурса делается через немного измененные алгоритм [DSU](https://en.wikipedia.org/wiki/Disjoint-set_data_structure) и алгоритм построения [MST](https://en.wikipedia.org/wiki/Minimum_spanning_tree). Когда нужно обновить состояние делается построение MST со своими представителями, каждый из которых подсчитывает суммарный объем разделяемого ресурса в его дереве и количество подключенных к его дереву нод.
+4) обновление состояния разделяемого между нодами ресурса делается через структуру данных [DSU](https://en.wikipedia.org/wiki/Disjoint-set_data_structure) и алгоритм построения [MST](https://en.wikipedia.org/wiki/Minimum_spanning_tree). Когда нужно обновить состояние делается построение MST со своими представителями, каждый из которых подсчитывает суммарный объем разделяемого ресурса в его дереве и количество подключенных к его дереву нод.
 
 ## Оптимизация
-время работы первой версии: 
+Для оптимизации можно использовать скрипт run_test.sh, который запускает flamegraph
+
+#### установка Flamegraph
 ```C
-Create nodes: 6 sec
-Initial fill: 0 sec
-Add connections: 7 sec
-First balancing: 43 sec
-Add water: 4 sec
-Second balancing: 43 sec
-Remove edges: 1 sec
-Add water again: 4 sec
-Final balancing: 40 sec
-TOTAL: 152 sec
+cd ~
+git clone https://github.com/brendangregg/FlameGraph
 ```
+
+#### запуск скрипта
+```C
+chmod +x run_perf_test.sh
+./run_perf_test.sh <prog_name>
+```
+результатом работы которого является подобный флеймграф:
 <details>
 <summary>флеймграф</summary>
     <img src="readme_src/no_optim.png" width="800"/>
 </details> 
-Как можно увидеть по этому флеймграфу главным источником задержки первой версии программы является операция [ ] в хеш-таблице:
 
-```C++
-    // balance the amount of the shared resource
-    std::unordered_map<int32_t, int32_t> sum;   // root -> sum of volumes
-    std::unordered_map<int32_t, int32_t> count; // root -> number of nodes
-
-    // 1. calculate the amounts and sizes of the components
-    for (int32_t i = 0; i < nodes_.size(); ++i) {
-        int32_t root = find_set(i);
-        sum[root] += nodes_[i].volume_;
-        count[root] += 1;
-    }
-
-    // 2. write the average value to each vertex
-    for (int32_t i = 0; i < nodes_.size(); ++i) {
-        int32_t root = find_set(i);
-        nodes_[i].volume_ = sum[root] / count[root]; // integer division
-    }
-```
-
-заменим на работу с векторами:
-
-```C++
-    // balance the amount of the shared resource
-    int32_t n = nodes_.size();
-
-    std::vector<int64_t> sum(n, 0);
-    std::vector<int32_t> count(n, 0);
-
-    // 1. compressing paths
-    for (int32_t i = 0; i < n; ++i) {
-        nodes_[i].parent_ = find_set(i);
-    }
-
-    // 2. count the amounts and sizes
-    for (int32_t i = 0; i < n; ++i) {
-        int32_t root = nodes_[i].parent_;
-        sum[root] += nodes_[i].volume_;
-        count[root] += 1;
-    }
-
-    // 3. write the average
-    for (int32_t i = 0; i < n; ++i) {
-        int32_t root = nodes_[i].parent_;
-        nodes_[i].volume_ = sum[root] / count[root];
-    }
-```
-
-время работы оптимизированной версии: 
-```C
-Create nodes: 6 sec
-Initial fill: 0 sec
-Add connections: 7 sec
-First balancing: 10 sec
-Add water: 4 sec
-Second balancing: 10 sec
-Remove edges: 1 sec
-Add water again: 4 sec
-Final balancing: 8 sec
-TOTAL: 53 sec
-```
-
-итог: время работы сценария уменьшилось в 2.87 раза, со 152 секунд до 53.
 
 ## Использование памяти
+Отследить использование памяти можно с помощью heaptrack
+#### установка на Ubuntu:
+```C
+sudo apt install heaptrack
+```
+#### сборка профиля и просмотр
+```C
+heaptrack ./<prog_name> -bench
+```
+
+
 <details>
 <summary>график из heaptrack</summary>
     <img src="readme_src/mem_use.png" width="800"/>

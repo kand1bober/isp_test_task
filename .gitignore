@@ -1,10 +1,13 @@
 .vscode
 thoughts.txt
+answer.txt
 
 performance/perf*
 performance/*.perf
 performance/*.folded
 
 a
+prog
 
 heaptrack*
+
