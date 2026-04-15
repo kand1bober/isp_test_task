@@ -5,21 +5,44 @@
 #include <random>
 #include <chrono>
 #include <cstdint>
+#include <string>
+#include <algorithm>
 
 #include "pool.hpp"
 
-class node_dispatcher_test {
+class time_work {
 private:
     using clock_t = std::chrono::high_resolution_clock;
+    clock_t::time_point clock_;
 
+public:
+    time_work() = default;
+
+    void start_clock() {
+        clock_ = clock_t::now();
+    }
+
+    auto get_clock_time() const {
+        return clock_t::now() - clock_;
+    }
+
+    void print_clock_time() const {
+        std::cout
+            << std::chrono::duration_cast<std::chrono::seconds>(get_clock_time()).count()
+            << " sec\n";
+    }
+};
+
+class node_dispatcher_test {
+private: 
+    time_work stage_timer_;
+    time_work total_timer_;
+
+private:
     node_dispatcher graph_;
     std::mt19937 rng_{123456};
 
-    int32_t N_ = 0;
-    int32_t K_ = 0;
-    int32_t L_ = 0;
-    int32_t M_ = 0;
-
+    int32_t N_, K_, L_, M_;
     std::vector<std::pair<int32_t, int32_t>> edges_;
 
     void create_nodes() {
@@ -46,7 +69,7 @@ private:
             int32_t b = node_dist(rng_);
 
             if (a != b) {
-                graph_.add_connection(a, b);
+                graph_.add_edge(a, b);
                 edges_.emplace_back(a, b);
             }
         }
@@ -73,15 +96,14 @@ private:
     void measure_resources() {
         graph_.calculate_resources();
     }
+    
+    void start_stage_time_measure(const std::string& stage_name) {
+        std::cout << stage_name << ": ";
+        stage_timer_.start_clock();
+    }
 
-    static void print_stage_time(
-        const char* stage_name,
-        const clock_t::time_point& start,
-        const clock_t::time_point& end
-    ) {
-        std::cout << stage_name << ": "
-                  << std::chrono::duration_cast<std::chrono::seconds>(end - start).count()
-                  << " sec\n";
+    void end_stage_time_measure() {
+        stage_timer_.print_clock_time();
     }
 
 public:
@@ -89,49 +111,46 @@ public:
         : N_(n), K_(k), L_(l), M_(m) {}
 
     void run() {
-        using std::cout;
+        total_timer_.start_clock();
 
-        const auto t0 = clock_t::now();
-
+        start_stage_time_measure("Create nodes");
         create_nodes();
-        const auto t1 = clock_t::now();
-        print_stage_time("Create nodes", t0, t1);
+        end_stage_time_measure();
 
+        start_stage_time_measure("Initial fill");
         fill_initial_resources();
-        const auto t2 = clock_t::now();
-        print_stage_time("Initial fill", t1, t2);
+        end_stage_time_measure();
 
+        start_stage_time_measure("Add connections");
         add_random_connections();
-        const auto t3 = clock_t::now();
-        print_stage_time("Add connections", t2, t3);
+        end_stage_time_measure();
 
+        start_stage_time_measure("First balancing");
         measure_resources();
-        const auto t4 = clock_t::now();
-        print_stage_time("First balancing", t3, t4);
+        end_stage_time_measure();
 
+        start_stage_time_measure("Add water");
         add_random_resources();
-        const auto t5 = clock_t::now();
-        print_stage_time("Add water", t4, t5);
+        end_stage_time_measure();
 
+        start_stage_time_measure("Second balancing");
         measure_resources();
-        const auto t6 = clock_t::now();
-        print_stage_time("Second balancing", t5, t6);
+        end_stage_time_measure();
 
+        start_stage_time_measure("Remove edges");
         remove_random_edges();
-        const auto t7 = clock_t::now();
-        print_stage_time("Remove edges", t6, t7);
+        end_stage_time_measure();
 
+        start_stage_time_measure("Add water again");
         add_random_resources();
-        const auto t8 = clock_t::now();
-        print_stage_time("Add water again", t7, t8);
+        end_stage_time_measure();
 
+        start_stage_time_measure("Final balancing");
         measure_resources();
-        const auto t9 = clock_t::now();
-        print_stage_time("Final balancing", t8, t9);
+        end_stage_time_measure();
 
-        cout << "TOTAL: "
-             << std::chrono::duration_cast<std::chrono::seconds>(t9 - t0).count()
-             << " sec\n";
+        std::cout << "TOTAL: ";
+        total_timer_.print_clock_time();
     }
-};
 
+};

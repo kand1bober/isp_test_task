@@ -6,7 +6,7 @@
 #include <cstdint>
 #include <vector>
 #include <algorithm>
-
+#include <optional>
 
 class node_dispatcher {
 private:
@@ -26,8 +26,25 @@ private:
                 connected_.pop_back();
             }
         }
+
+        void add_connection(int32_t id) {
+            connected_.push_back(id);
+        }
+
+        bool add_resource(int32_t volume) {
+            if (volume >= 0) {
+                volume_ += volume;
+                return true;
+            }
+            else 
+                return false;
+        }    
+
+        int32_t show_amount_of_resource() {
+            return volume_;
+        }
     };
-    
+
     std::vector<node_t> nodes_;
 
     //-------- tree functions --------
@@ -104,9 +121,9 @@ public:
     }
 
     //-------- edges functions --------
-    void add_connection(int32_t a, int32_t b) {
-        nodes_[a].connected_.push_back(b);
-        nodes_[b].connected_.push_back(a);        
+    void add_edge(int32_t a, int32_t b) {  
+        nodes_[a].add_connection(b);     
+        nodes_[b].add_connection(a);             
     }
 
     void remove_edge(int32_t a, int32_t b) {
@@ -115,19 +132,19 @@ public:
     }
 
     //-------- resource handling --------
-    int32_t add_resource(int32_t node_num, int32_t volume) {
-        if (volume >= 0) {
-            nodes_[node_num].volume_ += volume;
-            return 0;
+    bool add_resource(int32_t node_num, int32_t volume) {
+        if (node_num >= 0 && (size_t)node_num < nodes_.size()) {
+            bool state = nodes_[node_num].add_resource(volume);
+            return state;
         }
-        else 
-            return -1;
+        else
+            return false;
     }
 
-    int32_t show_amount_of_resource(int32_t node_num) {
+    std::optional<int32_t> show_amount_of_resource(int32_t node_num) {
         if (node_num >= 0 && (size_t)node_num < nodes_.size()) {
-            return nodes_[node_num].volume_; 
+            return nodes_[node_num].show_amount_of_resource(); 
         }
-        return -1;
+        return std::nullopt;
     }
 };

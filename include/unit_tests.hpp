@@ -5,6 +5,7 @@
 #include <vector>
 #include <cstdint>
 #include <chrono>
+#include <optional>
 
 #include "pool.hpp"
 
@@ -46,8 +47,64 @@ private:
 
     void check_equal(int32_t actual, int32_t expected, const std::string& label) {
         const bool ok = (actual == expected);
-
         current_test_assertions_.push_back({ok, label, expected, actual});
+
+        if (ok) {
+            ++passed_assertions_;
+        } else {
+            ++failed_assertions_;
+        }
+    }
+
+    void check_true(bool actual, const std::string& label) {
+        const bool ok = actual;
+        current_test_assertions_.push_back({ok, label, 1, actual ? 1 : 0});
+
+        if (ok) {
+            ++passed_assertions_;
+        } else {
+            ++failed_assertions_;
+        }
+    }
+
+    void check_false(bool actual, const std::string& label) {
+        const bool ok = !actual;
+        current_test_assertions_.push_back({ok, label, 0, actual ? 1 : 0});
+
+        if (ok) {
+            ++passed_assertions_;
+        } else {
+            ++failed_assertions_;
+        }
+    }
+
+    void check_optional_equal(const std::optional<int32_t>& actual,
+                              int32_t expected,
+                              const std::string& label) {
+        const bool ok = actual.has_value() && (*actual == expected);
+        current_test_assertions_.push_back({
+            ok,
+            label,
+            expected,
+            actual.has_value() ? *actual : -999999999
+        });
+
+        if (ok) {
+            ++passed_assertions_;
+        } else {
+            ++failed_assertions_;
+        }
+    }
+
+    void check_optional_empty(const std::optional<int32_t>& actual,
+                              const std::string& label) {
+        const bool ok = !actual.has_value();
+        current_test_assertions_.push_back({
+            ok,
+            label,
+            0,
+            actual.has_value() ? *actual : 0
+        });
 
         if (ok) {
             ++passed_assertions_;
@@ -118,7 +175,14 @@ private:
     void print_node_values(node_dispatcher& graph, int32_t from, int32_t to, const std::string& title) {
         std::cout << term_color::cyan << title << term_color::reset << ": ";
         for (int32_t i = from; i <= to; ++i) {
-            std::cout << "[" << i << "]=" << graph.show_amount_of_resource(i);
+            const auto value = graph.show_amount_of_resource(i);
+            std::cout << "[" << i << "]=";
+            if (value.has_value()) {
+                std::cout << *value;
+            } else {
+                std::cout << "null";
+            }
+
             if (i != to) {
                 std::cout << ", ";
             }
@@ -137,7 +201,7 @@ private:
 
         node_dispatcher graph;
         add_nodes(graph, 1);
-        graph.add_resource(0, 100);
+        check_true(graph.add_resource(0, 100), "add_resource(0, 100) succeeds");
 
         std::cout << term_color::cyan
                   << "Scenario: one isolated node with resource 100"
@@ -147,7 +211,7 @@ private:
         graph.calculate_resources();
 
         print_node_values(graph, 0, 0, "After");
-        check_equal(graph.show_amount_of_resource(0), 100, "node 0 keeps 100");
+        check_optional_equal(graph.show_amount_of_resource(0), 100, "node 0 keeps 100");
 
         end_test();
     }
@@ -157,15 +221,15 @@ private:
 
         node_dispatcher graph;
         add_nodes(graph, 2);
-        graph.add_resource(0, 11);
-        graph.add_resource(1, 29);
+        check_true(graph.add_resource(0, 11), "add_resource(0, 11) succeeds");
+        check_true(graph.add_resource(1, 29), "add_resource(1, 29) succeeds");
 
         print_node_values(graph, 0, 1, "Before");
         graph.calculate_resources();
         print_node_values(graph, 0, 1, "After");
 
-        check_equal(graph.show_amount_of_resource(0), 11, "node 0 stays 11");
-        check_equal(graph.show_amount_of_resource(1), 29, "node 1 stays 29");
+        check_optional_equal(graph.show_amount_of_resource(0), 11, "node 0 stays 11");
+        check_optional_equal(graph.show_amount_of_resource(1), 29, "node 1 stays 29");
 
         end_test();
     }
@@ -175,9 +239,9 @@ private:
 
         node_dispatcher graph;
         add_nodes(graph, 2);
-        graph.add_resource(0, 10);
-        graph.add_resource(1, 30);
-        graph.add_connection(0, 1);
+        check_true(graph.add_resource(0, 10), "add_resource(0, 10) succeeds");
+        check_true(graph.add_resource(1, 30), "add_resource(1, 30) succeeds");
+        graph.add_edge(0, 1);
 
         std::cout << term_color::cyan
                   << "Scenario: 0--1 with resources 10 and 30"
@@ -187,8 +251,8 @@ private:
         graph.calculate_resources();
 
         print_node_values(graph, 0, 1, "After");
-        check_equal(graph.show_amount_of_resource(0), 20, "node 0 becomes 20");
-        check_equal(graph.show_amount_of_resource(1), 20, "node 1 becomes 20");
+        check_optional_equal(graph.show_amount_of_resource(0), 20, "node 0 becomes 20");
+        check_optional_equal(graph.show_amount_of_resource(1), 20, "node 1 becomes 20");
 
         end_test();
     }
@@ -198,19 +262,19 @@ private:
 
         node_dispatcher graph;
         add_nodes(graph, 3);
-        graph.add_resource(0, 10);
-        graph.add_resource(1, 20);
-        graph.add_resource(2, 30);
-        graph.add_connection(0, 1);
-        graph.add_connection(1, 2);
+        check_true(graph.add_resource(0, 10), "add_resource(0, 10) succeeds");
+        check_true(graph.add_resource(1, 20), "add_resource(1, 20) succeeds");
+        check_true(graph.add_resource(2, 30), "add_resource(2, 30) succeeds");
+        graph.add_edge(0, 1);
+        graph.add_edge(1, 2);
 
         print_node_values(graph, 0, 2, "Before");
         graph.calculate_resources();
         print_node_values(graph, 0, 2, "After");
 
-        check_equal(graph.show_amount_of_resource(0), 20, "node 0 becomes 20");
-        check_equal(graph.show_amount_of_resource(1), 20, "node 1 becomes 20");
-        check_equal(graph.show_amount_of_resource(2), 20, "node 2 becomes 20");
+        check_optional_equal(graph.show_amount_of_resource(0), 20, "node 0 becomes 20");
+        check_optional_equal(graph.show_amount_of_resource(1), 20, "node 1 becomes 20");
+        check_optional_equal(graph.show_amount_of_resource(2), 20, "node 2 becomes 20");
 
         end_test();
     }
@@ -220,24 +284,24 @@ private:
 
         node_dispatcher graph;
         add_nodes(graph, 4);
-        graph.add_resource(0, 10);
-        graph.add_resource(1, 20);
-        graph.add_resource(2, 30);
-        graph.add_resource(3, 40);
+        check_true(graph.add_resource(0, 10), "add_resource(0, 10) succeeds");
+        check_true(graph.add_resource(1, 20), "add_resource(1, 20) succeeds");
+        check_true(graph.add_resource(2, 30), "add_resource(2, 30) succeeds");
+        check_true(graph.add_resource(3, 40), "add_resource(3, 40) succeeds");
 
-        graph.add_connection(0, 1);
-        graph.add_connection(1, 2);
-        graph.add_connection(2, 3);
-        graph.add_connection(3, 0);
+        graph.add_edge(0, 1);
+        graph.add_edge(1, 2);
+        graph.add_edge(2, 3);
+        graph.add_edge(3, 0);
 
         print_node_values(graph, 0, 3, "Before");
         graph.calculate_resources();
         print_node_values(graph, 0, 3, "After");
 
-        check_equal(graph.show_amount_of_resource(0), 25, "node 0 becomes 25");
-        check_equal(graph.show_amount_of_resource(1), 25, "node 1 becomes 25");
-        check_equal(graph.show_amount_of_resource(2), 25, "node 2 becomes 25");
-        check_equal(graph.show_amount_of_resource(3), 25, "node 3 becomes 25");
+        check_optional_equal(graph.show_amount_of_resource(0), 25, "node 0 becomes 25");
+        check_optional_equal(graph.show_amount_of_resource(1), 25, "node 1 becomes 25");
+        check_optional_equal(graph.show_amount_of_resource(2), 25, "node 2 becomes 25");
+        check_optional_equal(graph.show_amount_of_resource(3), 25, "node 3 becomes 25");
 
         end_test();
     }
@@ -248,24 +312,24 @@ private:
         node_dispatcher graph;
         add_nodes(graph, 5);
 
-        graph.add_resource(0, 10);
-        graph.add_resource(1, 30);
-        graph.add_resource(2, 100);
-        graph.add_resource(3, 200);
-        graph.add_resource(4, 50);
+        check_true(graph.add_resource(0, 10), "add_resource(0, 10) succeeds");
+        check_true(graph.add_resource(1, 30), "add_resource(1, 30) succeeds");
+        check_true(graph.add_resource(2, 100), "add_resource(2, 100) succeeds");
+        check_true(graph.add_resource(3, 200), "add_resource(3, 200) succeeds");
+        check_true(graph.add_resource(4, 50), "add_resource(4, 50) succeeds");
 
-        graph.add_connection(0, 1);
-        graph.add_connection(2, 3);
+        graph.add_edge(0, 1);
+        graph.add_edge(2, 3);
 
         print_node_values(graph, 0, 4, "Before");
         graph.calculate_resources();
         print_node_values(graph, 0, 4, "After");
 
-        check_equal(graph.show_amount_of_resource(0), 20,  "component {0,1}: node 0");
-        check_equal(graph.show_amount_of_resource(1), 20,  "component {0,1}: node 1");
-        check_equal(graph.show_amount_of_resource(2), 150, "component {2,3}: node 2");
-        check_equal(graph.show_amount_of_resource(3), 150, "component {2,3}: node 3");
-        check_equal(graph.show_amount_of_resource(4), 50,  "isolated node 4");
+        check_optional_equal(graph.show_amount_of_resource(0), 20,  "component {0,1}: node 0");
+        check_optional_equal(graph.show_amount_of_resource(1), 20,  "component {0,1}: node 1");
+        check_optional_equal(graph.show_amount_of_resource(2), 150, "component {2,3}: node 2");
+        check_optional_equal(graph.show_amount_of_resource(3), 150, "component {2,3}: node 3");
+        check_optional_equal(graph.show_amount_of_resource(4), 50,  "isolated node 4");
 
         end_test();
     }
@@ -276,20 +340,20 @@ private:
         node_dispatcher graph;
         add_nodes(graph, 3);
 
-        graph.add_resource(0, 0);
-        graph.add_resource(1, 30);
-        graph.add_resource(2, 60);
+        check_true(graph.add_resource(0, 0), "add_resource(0, 0) succeeds");
+        check_true(graph.add_resource(1, 30), "add_resource(1, 30) succeeds");
+        check_true(graph.add_resource(2, 60), "add_resource(2, 60) succeeds");
 
-        graph.add_connection(0, 1);
-        graph.add_connection(1, 2);
+        graph.add_edge(0, 1);
+        graph.add_edge(1, 2);
 
         print_node_values(graph, 0, 2, "Before first calculate");
         graph.calculate_resources();
         print_node_values(graph, 0, 2, "After first calculate");
 
-        check_equal(graph.show_amount_of_resource(0), 30, "before remove: node 0");
-        check_equal(graph.show_amount_of_resource(1), 30, "before remove: node 1");
-        check_equal(graph.show_amount_of_resource(2), 30, "before remove: node 2");
+        check_optional_equal(graph.show_amount_of_resource(0), 30, "before remove: node 0");
+        check_optional_equal(graph.show_amount_of_resource(1), 30, "before remove: node 1");
+        check_optional_equal(graph.show_amount_of_resource(2), 30, "before remove: node 2");
 
         graph.remove_edge(1, 2);
         std::cout << term_color::cyan << "Action: remove edge (1,2)" << term_color::reset << "\n";
@@ -297,9 +361,9 @@ private:
         graph.calculate_resources();
         print_node_values(graph, 0, 2, "After second calculate");
 
-        check_equal(graph.show_amount_of_resource(0), 30, "after remove: node 0");
-        check_equal(graph.show_amount_of_resource(1), 30, "after remove: node 1");
-        check_equal(graph.show_amount_of_resource(2), 30, "after remove: node 2 isolated");
+        check_optional_equal(graph.show_amount_of_resource(0), 30, "after remove: node 0");
+        check_optional_equal(graph.show_amount_of_resource(1), 30, "after remove: node 1");
+        check_optional_equal(graph.show_amount_of_resource(2), 30, "after remove: node 2 isolated");
 
         end_test();
     }
@@ -310,24 +374,24 @@ private:
         node_dispatcher graph;
         add_nodes(graph, 2);
 
-        graph.add_resource(0, 10);
-        graph.add_resource(1, 30);
-        graph.add_connection(0, 1);
+        check_true(graph.add_resource(0, 10), "add_resource(0, 10) succeeds");
+        check_true(graph.add_resource(1, 30), "add_resource(1, 30) succeeds");
+        graph.add_edge(0, 1);
 
         graph.calculate_resources();
         print_node_values(graph, 0, 1, "After first calculate");
 
-        check_equal(graph.show_amount_of_resource(0), 20, "first balance node 0");
-        check_equal(graph.show_amount_of_resource(1), 20, "first balance node 1");
+        check_optional_equal(graph.show_amount_of_resource(0), 20, "first balance node 0");
+        check_optional_equal(graph.show_amount_of_resource(1), 20, "first balance node 1");
 
-        graph.add_resource(0, 20);
+        check_true(graph.add_resource(0, 20), "add_resource(0, 20) succeeds");
         std::cout << term_color::cyan << "Action: add 20 to node 0" << term_color::reset << "\n";
 
         graph.calculate_resources();
         print_node_values(graph, 0, 1, "After second calculate");
 
-        check_equal(graph.show_amount_of_resource(0), 30, "second balance node 0");
-        check_equal(graph.show_amount_of_resource(1), 30, "second balance node 1");
+        check_optional_equal(graph.show_amount_of_resource(0), 30, "second balance node 0");
+        check_optional_equal(graph.show_amount_of_resource(1), 30, "second balance node 1");
 
         end_test();
     }
@@ -338,16 +402,16 @@ private:
         node_dispatcher graph;
         add_nodes(graph, 2);
 
-        graph.add_resource(0, 1);
-        graph.add_resource(1, 2);
-        graph.add_connection(0, 1);
+        check_true(graph.add_resource(0, 1), "add_resource(0, 1) succeeds");
+        check_true(graph.add_resource(1, 2), "add_resource(1, 2) succeeds");
+        graph.add_edge(0, 1);
 
         print_node_values(graph, 0, 1, "Before");
         graph.calculate_resources();
         print_node_values(graph, 0, 1, "After");
 
-        check_equal(graph.show_amount_of_resource(0), 1, "node 0 gets floor(3/2)=1");
-        check_equal(graph.show_amount_of_resource(1), 1, "node 1 gets floor(3/2)=1");
+        check_optional_equal(graph.show_amount_of_resource(0), 1, "node 0 gets floor(3/2)=1");
+        check_optional_equal(graph.show_amount_of_resource(1), 1, "node 1 gets floor(3/2)=1");
 
         end_test();
     }
@@ -358,18 +422,18 @@ private:
         node_dispatcher graph;
         add_nodes(graph, 6);
 
-        graph.add_resource(0, 60);
-        graph.add_resource(1, 0);
-        graph.add_resource(2, 0);
-        graph.add_resource(3, 0);
-        graph.add_resource(4, 0);
-        graph.add_resource(5, 0);
+        check_true(graph.add_resource(0, 60), "add_resource(0, 60) succeeds");
+        check_true(graph.add_resource(1, 0), "add_resource(1, 0) succeeds");
+        check_true(graph.add_resource(2, 0), "add_resource(2, 0) succeeds");
+        check_true(graph.add_resource(3, 0), "add_resource(3, 0) succeeds");
+        check_true(graph.add_resource(4, 0), "add_resource(4, 0) succeeds");
+        check_true(graph.add_resource(5, 0), "add_resource(5, 0) succeeds");
 
-        graph.add_connection(0, 1);
-        graph.add_connection(0, 2);
-        graph.add_connection(0, 3);
-        graph.add_connection(0, 4);
-        graph.add_connection(0, 5);
+        graph.add_edge(0, 1);
+        graph.add_edge(0, 2);
+        graph.add_edge(0, 3);
+        graph.add_edge(0, 4);
+        graph.add_edge(0, 5);
 
         std::cout << term_color::cyan
                   << "Scenario: 6 nodes, star centered at 0"
@@ -381,7 +445,7 @@ private:
         print_node_values(graph, 0, 5, "After");
 
         for (int i = 0; i < 6; ++i) {
-            check_equal(graph.show_amount_of_resource(i), 10, "star graph node " + std::to_string(i));
+            check_optional_equal(graph.show_amount_of_resource(i), 10, "star graph node " + std::to_string(i));
         }
 
         end_test();
@@ -393,31 +457,30 @@ private:
         node_dispatcher graph;
         add_nodes(graph, 7);
 
-        graph.add_resource(0, 10);
-        graph.add_resource(1, 20);
-        graph.add_resource(2, 30);
-        graph.add_resource(3, 40);
-        graph.add_resource(4, 50);
-        graph.add_resource(5, 60);
-        graph.add_resource(6, 70);
+        check_true(graph.add_resource(0, 10), "add_resource(0, 10) succeeds");
+        check_true(graph.add_resource(1, 20), "add_resource(1, 20) succeeds");
+        check_true(graph.add_resource(2, 30), "add_resource(2, 30) succeeds");
+        check_true(graph.add_resource(3, 40), "add_resource(3, 40) succeeds");
+        check_true(graph.add_resource(4, 50), "add_resource(4, 50) succeeds");
+        check_true(graph.add_resource(5, 60), "add_resource(5, 60) succeeds");
+        check_true(graph.add_resource(6, 70), "add_resource(6, 70) succeeds");
 
-        graph.add_connection(0, 1);
-        graph.add_connection(1, 2);
-        graph.add_connection(3, 4);
-        graph.add_connection(4, 5);
-        // node 6 isolated
+        graph.add_edge(0, 1);
+        graph.add_edge(1, 2);
+        graph.add_edge(3, 4);
+        graph.add_edge(4, 5);
 
         print_node_values(graph, 0, 6, "Before");
         graph.calculate_resources();
         print_node_values(graph, 0, 6, "After");
 
-        check_equal(graph.show_amount_of_resource(0), 20, "component {0,1,2}: node 0");
-        check_equal(graph.show_amount_of_resource(1), 20, "component {0,1,2}: node 1");
-        check_equal(graph.show_amount_of_resource(2), 20, "component {0,1,2}: node 2");
-        check_equal(graph.show_amount_of_resource(3), 50, "component {3,4,5}: node 3");
-        check_equal(graph.show_amount_of_resource(4), 50, "component {3,4,5}: node 4");
-        check_equal(graph.show_amount_of_resource(5), 50, "component {3,4,5}: node 5");
-        check_equal(graph.show_amount_of_resource(6), 70, "isolated node 6");
+        check_optional_equal(graph.show_amount_of_resource(0), 20, "component {0,1,2}: node 0");
+        check_optional_equal(graph.show_amount_of_resource(1), 20, "component {0,1,2}: node 1");
+        check_optional_equal(graph.show_amount_of_resource(2), 20, "component {0,1,2}: node 2");
+        check_optional_equal(graph.show_amount_of_resource(3), 50, "component {3,4,5}: node 3");
+        check_optional_equal(graph.show_amount_of_resource(4), 50, "component {3,4,5}: node 4");
+        check_optional_equal(graph.show_amount_of_resource(5), 50, "component {3,4,5}: node 5");
+        check_optional_equal(graph.show_amount_of_resource(6), 70, "isolated node 6");
 
         end_test();
     }
@@ -428,24 +491,24 @@ private:
         node_dispatcher graph;
         add_nodes(graph, 6);
 
-        graph.add_resource(0, 0);
-        graph.add_resource(1, 0);
-        graph.add_resource(2, 0);
-        graph.add_resource(3, 60);
-        graph.add_resource(4, 60);
-        graph.add_resource(5, 60);
+        check_true(graph.add_resource(0, 0), "add_resource(0, 0) succeeds");
+        check_true(graph.add_resource(1, 0), "add_resource(1, 0) succeeds");
+        check_true(graph.add_resource(2, 0), "add_resource(2, 0) succeeds");
+        check_true(graph.add_resource(3, 60), "add_resource(3, 60) succeeds");
+        check_true(graph.add_resource(4, 60), "add_resource(4, 60) succeeds");
+        check_true(graph.add_resource(5, 60), "add_resource(5, 60) succeeds");
 
-        graph.add_connection(0, 1);
-        graph.add_connection(1, 2);
-        graph.add_connection(2, 3);
-        graph.add_connection(3, 4);
-        graph.add_connection(4, 5);
+        graph.add_edge(0, 1);
+        graph.add_edge(1, 2);
+        graph.add_edge(2, 3);
+        graph.add_edge(3, 4);
+        graph.add_edge(4, 5);
 
         graph.calculate_resources();
         print_node_values(graph, 0, 5, "After first calculate");
 
         for (int i = 0; i < 6; ++i) {
-            check_equal(graph.show_amount_of_resource(i), 30, "before split node " + std::to_string(i));
+            check_optional_equal(graph.show_amount_of_resource(i), 30, "before split node " + std::to_string(i));
         }
 
         graph.remove_edge(2, 3);
@@ -454,12 +517,12 @@ private:
         graph.calculate_resources();
         print_node_values(graph, 0, 5, "After second calculate");
 
-        check_equal(graph.show_amount_of_resource(0), 30, "left part node 0");
-        check_equal(graph.show_amount_of_resource(1), 30, "left part node 1");
-        check_equal(graph.show_amount_of_resource(2), 30, "left part node 2");
-        check_equal(graph.show_amount_of_resource(3), 30, "right part node 3");
-        check_equal(graph.show_amount_of_resource(4), 30, "right part node 4");
-        check_equal(graph.show_amount_of_resource(5), 30, "right part node 5");
+        check_optional_equal(graph.show_amount_of_resource(0), 30, "left part node 0");
+        check_optional_equal(graph.show_amount_of_resource(1), 30, "left part node 1");
+        check_optional_equal(graph.show_amount_of_resource(2), 30, "left part node 2");
+        check_optional_equal(graph.show_amount_of_resource(3), 30, "right part node 3");
+        check_optional_equal(graph.show_amount_of_resource(4), 30, "right part node 4");
+        check_optional_equal(graph.show_amount_of_resource(5), 30, "right part node 5");
 
         end_test();
     }
@@ -471,23 +534,24 @@ private:
         add_nodes(graph, 7);
 
         for (int i = 0; i < 7; ++i) {
-            graph.add_resource(i, (i + 1) * 10); // 10..70, sum 280, avg 40
+            check_true(graph.add_resource(i, (i + 1) * 10),
+                       "add_resource(" + std::to_string(i) + ", " + std::to_string((i + 1) * 10) + ") succeeds");
         }
 
-        graph.add_connection(0, 1);
-        graph.add_connection(1, 2);
-        graph.add_connection(2, 3);
-        graph.add_connection(3, 0); // cycle
-        graph.add_connection(3, 4);
-        graph.add_connection(4, 5);
-        graph.add_connection(5, 6); // tail
+        graph.add_edge(0, 1);
+        graph.add_edge(1, 2);
+        graph.add_edge(2, 3);
+        graph.add_edge(3, 0);
+        graph.add_edge(3, 4);
+        graph.add_edge(4, 5);
+        graph.add_edge(5, 6);
 
         print_node_values(graph, 0, 6, "Before");
         graph.calculate_resources();
         print_node_values(graph, 0, 6, "After");
 
         for (int i = 0; i < 7; ++i) {
-            check_equal(graph.show_amount_of_resource(i), 40, "cycle+tail node " + std::to_string(i));
+            check_optional_equal(graph.show_amount_of_resource(i), 40, "cycle+tail node " + std::to_string(i));
         }
 
         end_test();
@@ -499,21 +563,21 @@ private:
         node_dispatcher graph;
         add_nodes(graph, 4);
 
-        graph.add_resource(0, 10);
-        graph.add_resource(1, 20);
-        graph.add_resource(2, 30);
-        graph.add_resource(3, 40);
+        check_true(graph.add_resource(0, 10), "add_resource(0, 10) succeeds");
+        check_true(graph.add_resource(1, 20), "add_resource(1, 20) succeeds");
+        check_true(graph.add_resource(2, 30), "add_resource(2, 30) succeeds");
+        check_true(graph.add_resource(3, 40), "add_resource(3, 40) succeeds");
 
-        graph.add_connection(0, 1);
-        graph.add_connection(1, 2);
-        graph.add_connection(2, 3);
-        graph.add_connection(3, 0);
+        graph.add_edge(0, 1);
+        graph.add_edge(1, 2);
+        graph.add_edge(2, 3);
+        graph.add_edge(3, 0);
 
         graph.calculate_resources();
         print_node_values(graph, 0, 3, "After first calculate");
 
         for (int i = 0; i < 4; ++i) {
-            check_equal(graph.show_amount_of_resource(i), 25, "before edge removal node " + std::to_string(i));
+            check_optional_equal(graph.show_amount_of_resource(i), 25, "before edge removal node " + std::to_string(i));
         }
 
         graph.remove_edge(0, 1);
@@ -523,7 +587,7 @@ private:
         print_node_values(graph, 0, 3, "After second calculate");
 
         for (int i = 0; i < 4; ++i) {
-            check_equal(graph.show_amount_of_resource(i), 25, "after non-bridge removal node " + std::to_string(i));
+            check_optional_equal(graph.show_amount_of_resource(i), 25, "after non-bridge removal node " + std::to_string(i));
         }
 
         end_test();
@@ -535,27 +599,27 @@ private:
         node_dispatcher graph;
         add_nodes(graph, 4);
 
-        graph.add_resource(0, 8);
-        graph.add_resource(1, 16);
-        graph.add_resource(2, 24);
-        graph.add_resource(3, 32);
+        check_true(graph.add_resource(0, 8), "add_resource(0, 8) succeeds");
+        check_true(graph.add_resource(1, 16), "add_resource(1, 16) succeeds");
+        check_true(graph.add_resource(2, 24), "add_resource(2, 24) succeeds");
+        check_true(graph.add_resource(3, 32), "add_resource(3, 32) succeeds");
 
-        graph.add_connection(0, 1);
-        graph.add_connection(1, 2);
-        graph.add_connection(2, 3);
+        graph.add_edge(0, 1);
+        graph.add_edge(1, 2);
+        graph.add_edge(2, 3);
 
         graph.calculate_resources();
         print_node_values(graph, 0, 3, "After first calculate");
 
         for (int i = 0; i < 4; ++i) {
-            check_equal(graph.show_amount_of_resource(i), 20, "first pass node " + std::to_string(i));
+            check_optional_equal(graph.show_amount_of_resource(i), 20, "first pass node " + std::to_string(i));
         }
 
         graph.calculate_resources();
         print_node_values(graph, 0, 3, "After second calculate");
 
         for (int i = 0; i < 4; ++i) {
-            check_equal(graph.show_amount_of_resource(i), 20, "second pass node " + std::to_string(i));
+            check_optional_equal(graph.show_amount_of_resource(i), 20, "second pass node " + std::to_string(i));
         }
 
         end_test();
@@ -567,15 +631,15 @@ private:
         node_dispatcher graph;
         add_nodes(graph, 1);
 
-        graph.add_resource(0, 50);
-        const int32_t rc = graph.add_resource(0, -10);
+        check_true(graph.add_resource(0, 50), "add_resource(0, 50) succeeds");
+        const bool rc = graph.add_resource(0, -10);
 
         print_node_values(graph, 0, 0, "Before calculate");
         graph.calculate_resources();
         print_node_values(graph, 0, 0, "After calculate");
 
-        check_equal(rc, -1, "add_resource returns -1 on negative input");
-        check_equal(graph.show_amount_of_resource(0), 50, "resource remains unchanged");
+        check_false(rc, "add_resource returns false on negative input");
+        check_optional_equal(graph.show_amount_of_resource(0), 50, "resource remains unchanged");
 
         end_test();
     }
