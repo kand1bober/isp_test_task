@@ -1,5 +1,4 @@
 .vscode
-answer.txt
 
 performance/perf*
 performance/*.perf
