@@ -86,53 +86,56 @@ private:
 public:
     time_work() = default;
 
-    void start_clock() {
+    void start() {
         clock_ = clock_t::now();
     }
 
-    auto get_clock_time() const {
+    auto elapsed() const {
         return clock_t::now() - clock_;
     }
 
-    void print_clock_time() const {
+    void print_elapsed() const {
         std::cout
-            << std::chrono::duration_cast<std::chrono::seconds>(get_clock_time()).count()
+            << std::chrono::duration_cast<std::chrono::seconds>(elapsed()).count()
             << " sec\n";
     }
 };
 
 
-class task_t : public time_work {
+class task_t {
+private: 
+    time_work clock;
+
 public: 
     task_t() = default;
 
     void run(
-        const std::string work_name,
+        const std::string& work_name,
         node_dispatcher_test* obj, 
         void (node_dispatcher_test::*method_ptr)()
     ) {
-        std::cout << work_name << "\n";     
-        start_clock();
+        std::cout << work_name << ": ";     
+        clock.start();
         (obj->*method_ptr)();
-        print_clock_time();
+        clock.print_elapsed();
     }  
 };
 
 
 void node_dispatcher_test::run() {
-    time_work total_task{};
-    total_task.start_clock();
+    time_work clock{};
+    clock.start();
 
-    task_t stage_task{};
-    stage_task.run("create_nodes", this, &node_dispatcher_test::create_nodes);    
-    stage_task.run("fill_initial_resources", this, &node_dispatcher_test::fill_initial_resources);
-    stage_task.run("add_random_connections", this, &node_dispatcher_test::add_random_connections);
-    stage_task.run("measure_resources (1)", this, &node_dispatcher_test::measure_resources);
-    stage_task.run("add_random_resources (1)", this, &node_dispatcher_test::add_random_resources);
-    stage_task.run("measure_resources (2)", this, &node_dispatcher_test::measure_resources);
-    stage_task.run("remove_random_edges", this, &node_dispatcher_test::remove_random_edges);
-    stage_task.run("add_random_resources (2)", this, &node_dispatcher_test::add_random_resources);
-    stage_task.run("measure_resources (3)", this, &node_dispatcher_test::measure_resources);
+    task_t task{};
+    task.run("create_nodes", this, &node_dispatcher_test::create_nodes);    
+    task.run("fill_initial_resources", this, &node_dispatcher_test::fill_initial_resources);
+    task.run("add_random_connections", this, &node_dispatcher_test::add_random_connections);
+    task.run("measure_resources (1)", this, &node_dispatcher_test::measure_resources);
+    task.run("add_random_resources (1)", this, &node_dispatcher_test::add_random_resources);
+    task.run("measure_resources (2)", this, &node_dispatcher_test::measure_resources);
+    task.run("remove_random_edges", this, &node_dispatcher_test::remove_random_edges);
+    task.run("add_random_resources (2)", this, &node_dispatcher_test::add_random_resources);
+    task.run("measure_resources (3)", this, &node_dispatcher_test::measure_resources);
 
-    std::cout << "TOTAL: "; total_task.print_clock_time();
+    std::cout << "TOTAL: "; clock.print_elapsed();
 }
