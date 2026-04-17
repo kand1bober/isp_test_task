@@ -10,34 +10,7 @@
 
 #include "pool.hpp"
 
-class time_work {
-private:
-    using clock_t = std::chrono::high_resolution_clock;
-    clock_t::time_point clock_;
-
-public:
-    time_work() = default;
-
-    void start_clock() {
-        clock_ = clock_t::now();
-    }
-
-    auto get_clock_time() const {
-        return clock_t::now() - clock_;
-    }
-
-    void print_clock_time() const {
-        std::cout
-            << std::chrono::duration_cast<std::chrono::seconds>(get_clock_time()).count()
-            << " sec\n";
-    }
-};
-
 class node_dispatcher_test {
-private: 
-    time_work stage_timer_;
-    time_work total_timer_;
-
 private:
     node_dispatcher graph_;
     std::mt19937 rng_{123456};
@@ -96,61 +69,70 @@ private:
     void measure_resources() {
         graph_.calculate_resources();
     }
-    
-    void start_stage_time_measure(const std::string& stage_name) {
-        std::cout << stage_name << ": ";
-        stage_timer_.start_clock();
-    }
-
-    void end_stage_time_measure() {
-        stage_timer_.print_clock_time();
-    }
 
 public:
     node_dispatcher_test(int32_t n, int32_t k, int32_t l, int32_t m)
         : N_(n), K_(k), L_(l), M_(m) {}
 
-    void run() {
-        total_timer_.start_clock();
+    void run();
+};
 
-        start_stage_time_measure("Create nodes");
-        create_nodes();
-        end_stage_time_measure();
 
-        start_stage_time_measure("Initial fill");
-        fill_initial_resources();
-        end_stage_time_measure();
+class time_work {
+private:
+    using clock_t = std::chrono::high_resolution_clock;
+    clock_t::time_point clock_;
 
-        start_stage_time_measure("Add connections");
-        add_random_connections();
-        end_stage_time_measure();
+public:
+    time_work() = default;
 
-        start_stage_time_measure("First balancing");
-        measure_resources();
-        end_stage_time_measure();
-
-        start_stage_time_measure("Add water");
-        add_random_resources();
-        end_stage_time_measure();
-
-        start_stage_time_measure("Second balancing");
-        measure_resources();
-        end_stage_time_measure();
-
-        start_stage_time_measure("Remove edges");
-        remove_random_edges();
-        end_stage_time_measure();
-
-        start_stage_time_measure("Add water again");
-        add_random_resources();
-        end_stage_time_measure();
-
-        start_stage_time_measure("Final balancing");
-        measure_resources();
-        end_stage_time_measure();
-
-        std::cout << "TOTAL: ";
-        total_timer_.print_clock_time();
+    void start_clock() {
+        clock_ = clock_t::now();
     }
 
+    auto get_clock_time() const {
+        return clock_t::now() - clock_;
+    }
+
+    void print_clock_time() const {
+        std::cout
+            << std::chrono::duration_cast<std::chrono::seconds>(get_clock_time()).count()
+            << " sec\n";
+    }
 };
+
+
+class task_t : public time_work {
+public: 
+    task_t() = default;
+
+    void run(
+        const std::string work_name,
+        node_dispatcher_test* obj, 
+        void (node_dispatcher_test::*method_ptr)()
+    ) {
+        std::cout << work_name << "\n";     
+        start_clock();
+        (obj->*method_ptr)();
+        print_clock_time();
+    }  
+};
+
+
+void node_dispatcher_test::run() {
+    time_work total_task{};
+    total_task.start_clock();
+
+    task_t stage_task{};
+    stage_task.run("create_nodes", this, &node_dispatcher_test::create_nodes);    
+    stage_task.run("fill_initial_resources", this, &node_dispatcher_test::fill_initial_resources);
+    stage_task.run("add_random_connections", this, &node_dispatcher_test::add_random_connections);
+    stage_task.run("measure_resources (1)", this, &node_dispatcher_test::measure_resources);
+    stage_task.run("add_random_resources (1)", this, &node_dispatcher_test::add_random_resources);
+    stage_task.run("measure_resources (2)", this, &node_dispatcher_test::measure_resources);
+    stage_task.run("remove_random_edges", this, &node_dispatcher_test::remove_random_edges);
+    stage_task.run("add_random_resources (2)", this, &node_dispatcher_test::add_random_resources);
+    stage_task.run("measure_resources (3)", this, &node_dispatcher_test::measure_resources);
+
+    std::cout << "TOTAL: "; total_task.print_clock_time();
+}

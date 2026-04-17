@@ -1,5 +1,4 @@
 .vscode
-thoughts.txt
 answer.txt
 
 performance/perf*
@@ -10,5 +9,3 @@ a
 prog
 
 heaptrack*
-
-test.cpp
