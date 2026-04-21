@@ -109,16 +109,13 @@ private:
 public: 
     task_t() = default;
 
-    void run(
-        const std::string& work_name,
-        node_dispatcher_test* obj, 
-        void (node_dispatcher_test::*method_ptr)()
-    ) {
-        std::cout << work_name << ": ";     
+    template<typename Func>
+    void run(const std::string& name, Func func) {
+        std::cout << name << ": ";
         clock.start();
-        (obj->*method_ptr)();
+        func();
         clock.print_elapsed();
-    }  
+    }
 };
 
 
@@ -127,15 +124,16 @@ void node_dispatcher_test::run() {
     clock.start();
 
     task_t task{};
-    task.run("create_nodes", this, &node_dispatcher_test::create_nodes);    
-    task.run("fill_initial_resources", this, &node_dispatcher_test::fill_initial_resources);
-    task.run("add_random_connections", this, &node_dispatcher_test::add_random_connections);
-    task.run("measure_resources (1)", this, &node_dispatcher_test::measure_resources);
-    task.run("add_random_resources (1)", this, &node_dispatcher_test::add_random_resources);
-    task.run("measure_resources (2)", this, &node_dispatcher_test::measure_resources);
-    task.run("remove_random_edges", this, &node_dispatcher_test::remove_random_edges);
-    task.run("add_random_resources (2)", this, &node_dispatcher_test::add_random_resources);
-    task.run("measure_resources (3)", this, &node_dispatcher_test::measure_resources);
-
+    // passing lambda, so in task_t 'Func' derives to '__Lambda'
+    task.run("create_nodes",               [this]{ create_nodes(); });
+    task.run("fill_initial_resources",     [this]{ fill_initial_resources(); });
+    task.run("add_random_connections",     [this]{ add_random_connections(); });
+    task.run("measure_resources (1)",      [this]{ measure_resources(); });
+    task.run("add_random_resources (1)",   [this]{ add_random_resources(); });
+    task.run("measure_resources (2)",      [this]{ measure_resources(); });
+    task.run("remove_random_edges",        [this]{ remove_random_edges(); });
+    task.run("add_random_resources (2)",   [this]{ add_random_resources(); });
+    task.run("measure_resources (3)",      [this]{ measure_resources(); });
+    
     std::cout << "TOTAL: "; clock.print_elapsed();
 }
