@@ -1,113 +1,116 @@
 #include "../include/bench_tasks.hpp"
 
-class create_nodes_t final : public task_t {
-private:
-    node_dispatcher_test_context& ctx_;
+// anonymous namespace for classes to be seen only from this .cpp
+namespace {
+    class create_nodes_t final : public task_t {
+    private:
+        node_dispatcher_test_context& ctx_;
 
-    void task() override {
-        for (int32_t i = 0; i < ctx_.N_; ++i)
-            ctx_.graph_.add_node();
-    }
+        void task() override {
+            for (int32_t i = 0; i < ctx_.N_; ++i)
+                ctx_.graph_.add_node();
+        }
 
-public:
-    create_nodes_t(node_dispatcher_test_context& ctx) : 
-        task_t("create_nodes"), ctx_(ctx) {}
-};
-
-
-class fill_initial_resources_t final : public task_t {
-private:
-    node_dispatcher_test_context& ctx_;
-    
-    void task() override {
-        std::uniform_int_distribution<int32_t> water_dist(1, 500);
-
-        for (int32_t i = 0; i < ctx_.N_; ++i) {
-            ctx_.graph_.add_resource(i, water_dist(ctx_.rng_));
-        }            
-    }
-
-public:
-    fill_initial_resources_t(node_dispatcher_test_context& ctx) : 
-        task_t("fill_initial_resources"), ctx_(ctx) {}
-};
+    public:
+        create_nodes_t(node_dispatcher_test_context& ctx) : 
+            task_t("create_nodes"), ctx_(ctx) {}
+    };
 
 
-class add_random_connections_t final : public task_t {
-private:
-    node_dispatcher_test_context& ctx_;
-    
-    void task() override {
-        std::uniform_int_distribution<int32_t> node_dist(0, ctx_.N_ - 1);
-        ctx_.edges_.reserve(ctx_.K_);
+    class fill_initial_resources_t final : public task_t {
+    private:
+        node_dispatcher_test_context& ctx_;
+        
+        void task() override {
+            std::uniform_int_distribution<int32_t> water_dist(1, 500);
 
-        for (int32_t i = 0; i < ctx_.K_; ++i) {
-            int32_t a = node_dist(ctx_.rng_);
-            int32_t b = node_dist(ctx_.rng_);
+            for (int32_t i = 0; i < ctx_.N_; ++i) {
+                ctx_.graph_.add_resource(i, water_dist(ctx_.rng_));
+            }            
+        }
 
-            if (a != b) {
-                ctx_.graph_.add_edge(a, b);
-                ctx_.edges_.emplace_back(a, b);
+    public:
+        fill_initial_resources_t(node_dispatcher_test_context& ctx) : 
+            task_t("fill_initial_resources"), ctx_(ctx) {}
+    };
+
+
+    class add_random_connections_t final : public task_t {
+    private:
+        node_dispatcher_test_context& ctx_;
+        
+        void task() override {
+            std::uniform_int_distribution<int32_t> node_dist(0, ctx_.N_ - 1);
+            ctx_.edges_.reserve(ctx_.K_);
+
+            for (int32_t i = 0; i < ctx_.K_; ++i) {
+                int32_t a = node_dist(ctx_.rng_);
+                int32_t b = node_dist(ctx_.rng_);
+
+                if (a != b) {
+                    ctx_.graph_.add_edge(a, b);
+                    ctx_.edges_.emplace_back(a, b);
+                }
             }
         }
-    }
 
-public:
-    add_random_connections_t(node_dispatcher_test_context& ctx) : 
-        task_t("add_random_connections"), ctx_(ctx) {}            
-};
+    public:
+        add_random_connections_t(node_dispatcher_test_context& ctx) : 
+            task_t("add_random_connections"), ctx_(ctx) {}            
+    };
 
 
-class add_random_resources_t final : public task_t {
-private:
-    node_dispatcher_test_context& ctx_;
-    
-    void task() override {
-        std::uniform_int_distribution<int32_t> node_dist(0, ctx_.N_ - 1);
-        std::uniform_int_distribution<int32_t> water_dist(1, 500);
+    class add_random_resources_t final : public task_t {
+    private:
+        node_dispatcher_test_context& ctx_;
+        
+        void task() override {
+            std::uniform_int_distribution<int32_t> node_dist(0, ctx_.N_ - 1);
+            std::uniform_int_distribution<int32_t> water_dist(1, 500);
 
-        for (int32_t i = 0; i < ctx_.L_; ++i) {
-            ctx_.graph_.add_resource(node_dist(ctx_.rng_), water_dist(ctx_.rng_));
+            for (int32_t i = 0; i < ctx_.L_; ++i) {
+                ctx_.graph_.add_resource(node_dist(ctx_.rng_), water_dist(ctx_.rng_));
+            }
         }
-    }
 
-public:
-    add_random_resources_t(node_dispatcher_test_context& ctx) : 
-        task_t("add_random_resources"), ctx_(ctx) {}
-};
+    public:
+        add_random_resources_t(node_dispatcher_test_context& ctx) : 
+            task_t("add_random_resources"), ctx_(ctx) {}
+    };
 
 
-class remove_random_edges_t final : public task_t {
-private:
-    node_dispatcher_test_context& ctx_;
-    
-    void task() override {
-        const size_t remove_count = std::min(static_cast<size_t>(ctx_.M_), ctx_.edges_.size());
+    class remove_random_edges_t final : public task_t {
+    private:
+        node_dispatcher_test_context& ctx_;
+        
+        void task() override {
+            const size_t remove_count = std::min(static_cast<size_t>(ctx_.M_), ctx_.edges_.size());
 
-        for (size_t i = 0; i < remove_count; ++i) {
-            const auto [a, b] = ctx_.edges_[i];
-            ctx_.graph_.remove_edge(a, b);
+            for (size_t i = 0; i < remove_count; ++i) {
+                const auto [a, b] = ctx_.edges_[i];
+                ctx_.graph_.remove_edge(a, b);
+            }
         }
-    }
 
-public:
-    remove_random_edges_t(node_dispatcher_test_context& ctx) : 
-        task_t("remove_random_edges"), ctx_(ctx) {}
-};
+    public:
+        remove_random_edges_t(node_dispatcher_test_context& ctx) : 
+            task_t("remove_random_edges"), ctx_(ctx) {}
+    };
 
 
-class measure_resources_t final : public task_t {
-private:
-    node_dispatcher_test_context& ctx_;
-    
-    void task() override {
-        ctx_.graph_.calculate_resources();
-    }
+    class measure_resources_t final : public task_t {
+    private:
+        node_dispatcher_test_context& ctx_;
+        
+        void task() override {
+            ctx_.graph_.calculate_resources();
+        }
 
-public:
-    measure_resources_t(node_dispatcher_test_context& ctx) : 
-        task_t("measure_resources"), ctx_(ctx) {}
-};
+    public:
+        measure_resources_t(node_dispatcher_test_context& ctx) : 
+            task_t("measure_resources"), ctx_(ctx) {}
+    };
+}
 
 
 //------------- Functions -------------

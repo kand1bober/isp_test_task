@@ -8,7 +8,6 @@
 #include <algorithm>
 #include <memory>
 
-#include "pool.hpp"
 #include "bench_tasks.hpp"
     
 class node_dispatcher_test {
