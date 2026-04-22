@@ -10,7 +10,7 @@
 
 #include "pool.hpp"
 #include "bench_tasks.hpp"
-
+    
 class node_dispatcher_test {
 private:
     node_dispatcher_test_context ctx_;
@@ -20,15 +20,15 @@ public:
         ctx_(n, k, l, m) 
     {
         tasks_.reserve(9);
-        tasks_.push_back(std::make_unique<create_nodes_t>(ctx_));
-        tasks_.push_back(std::make_unique<fill_initial_resources_t>(ctx_));
-        tasks_.push_back(std::make_unique<add_random_connections_t>(ctx_));
-        tasks_.push_back(std::make_unique<measure_resources_t>(ctx_));
-        tasks_.push_back(std::make_unique<add_random_resources_t>(ctx_));
-        tasks_.push_back(std::make_unique<measure_resources_t>(ctx_));
-        tasks_.push_back(std::make_unique<remove_random_edges_t>(ctx_));
-        tasks_.push_back(std::make_unique<add_random_resources_t>(ctx_));
-        tasks_.push_back(std::make_unique<measure_resources_t>(ctx_));
+        tasks_.push_back(create_nodes(ctx_));
+        tasks_.push_back(fill_initial_resources(ctx_));
+        tasks_.push_back(add_random_connections(ctx_));
+        tasks_.push_back(measure_resources(ctx_));
+        tasks_.push_back(add_random_resources(ctx_));
+        tasks_.push_back(measure_resources(ctx_));
+        tasks_.push_back(remove_random_edges(ctx_));
+        tasks_.push_back(add_random_resources(ctx_));
+        tasks_.push_back(measure_resources(ctx_));
     }
 
     void run() {
