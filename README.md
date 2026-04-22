@@ -1,6 +1,5 @@
 ### build
-    g++ src/main.cpp -o <prog_name>
-    g++ src/main.cpp src/bench_tasks.cpp -o a
+    g++ src/main.cpp src/bench_tasks.cpp -o <prog_name>
 ### run unit-tests
     ./<prog_name> -test
 ### run bench
