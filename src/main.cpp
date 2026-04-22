@@ -2,7 +2,7 @@
 #include <string>
 #include <cstdint>
 
-#include "../include/bench.hpp"
+#include "../include/bench_runner.hpp"
 #include "../include/unit_tests.hpp"
 
 int main(int argc, char* argv[]) {
